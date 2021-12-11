@@ -4,7 +4,6 @@ require 'yaml'
 require 'sequel'
 require 'logger'
 
-$config=YAML.load_file("#{$LOAD_PATH[0]}/config.yml")
 $db=Sequel.connect("mysql2://#{$config['dbUser']}:#{$config['dbPass']}@#{$config['dbHost']}:3306/#{$config['dbName']}")
 $logger=Logger.new(STDOUT)
 
@@ -19,7 +18,11 @@ class DB
     return $db[:images].insert(:id => id, :alt => alt, :src => src )
   end
   def addNewURL(id,url,vendor)
-    return $db[:urls].insert(:id => id, :url => url, :vendor => vendor)
+    begin
+      return $db[:urls].insert(:id => id, :url => url, :vendor => vendor)
+    rescue Exception => e
+      $logger.error(e)
+    end
   end
   def addHistory(upc,id,vendor,price)
     return $db[:history].insert(:upc => upc, :id => id, :vendor => vendor, :price => price)
@@ -57,9 +60,9 @@ class DB
       id=getIDbyUPC(item["upc"])
       if id.nil?
         id=getIDbyImage(item["image"])
-        $logger.debug("found item id #{id} from image #{item["image"]}") unless id.nil?
+        #$logger.debug("found item id #{id} from image #{item["image"]}") unless id.nil?
       else
-        $logger.debug("found item id #{id} from upc #{item["upc"]}")
+        #$logger.debug("found item id #{id} from upc #{item["upc"]}")
       end
       if id.nil? #new item found
         id=addNewItem(item["brand"],item["tags"])
@@ -72,7 +75,7 @@ class DB
         urls=getURLs(id)
         addNewUPC(item["upc"],id,item["item"],item["size"],item["price"],vendor) unless getIDbyUPC(item["upc"])
         addNewImage(id,alt="#{vendor}#{Time.now.strftime("%s")}",src=item["image"]) unless images.include?(item["image"])
-        $logger.info("urls: #{urls.join(",")} include? #{item["sku"]} #{urls.include?(item["sku"])} ")
+        #$logger.debug("urls: #{urls.join(",")} include? #{item["sku"]} #{urls.include?(item["sku"])} ")
         addNewURL(id,url=item["sku"],vendor) unless urls.include?(item["sku"])
         #mergeTags(id,item["tags"])
       end

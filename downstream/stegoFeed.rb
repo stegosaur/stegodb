@@ -7,12 +7,10 @@ require 'yaml'
 require 'net/ftp'
 require 'logger'
 require 'zlib'
-require 'stegoDB'
-$config=YAML.load_file("#{$LOAD_PATH[0]}/config.yml")
+require '../midstream/stegoDB'
 
 class Feeder
-  def impactFTP(ftpHost=$config['ftpHost'],ftpUser=$config['ftpUser'],ftpPass=$config['ftpPass'],logpath=STDOUT)
-    logger=Logger.new(logpath)
+  def impactFTP(outpath,ftpHost=$config['ftpHost'],ftpUser=$config['ftpUser'],ftpPass=$config['ftpPass'])
     ftp=Net::FTP.open(ftpHost)
     ftp.read_timeout=300
     ftp.login(ftpUser,ftpPass)
@@ -21,21 +19,21 @@ class Feeder
     files.each{|file|
       t0=Time.now
       transferred=0
-      outfile="walmart/#{Time.now.to_i}.#{file}"
+      outfile="#{outpath}/#{Time.now.to_i}.#{file}"
       ftp.getbinaryfile(file, outfile, 1024*1) { |data|
         transferred += data.size
-        logger.info("downloading #{outfile} #{(transferred/1024.0/1024.0).round(4)}mb (#{(transferred/(Time.now-t0)/1024).round(2)}k/sec) ") if (rand*1000).to_i == 0
+        $logger.info("downloading #{outfile} #{(transferred/1024.0/1024.0).round(4)}mb (#{(transferred/(Time.now-t0)/1024).round(2)}k/sec) ") if (rand*1000).to_i == 0
       }
     }
   end
 
-  def impactToDB(infile,vendor="walmart",logpath=STDOUT)
-    logger=Logger.new(logpath)
-    logger.info("importing to csv array")
+  def impactToDB(infile,vendor="walmart")
+    $logger.info("importing to csv array")
     stego=DB.new()
     csv=CSV.new(Zlib::GzipReader.open(infile).read, headers: true,:col_sep=>"\t")
-    logger.info("starting DB load")
-      index=0
+    $logger.info("starting DB load")
+    index=0
+    t0=Time.now
     while row=csv.shift
       begin
         next if !row[2].to_s.match(/\d+/) or !row[1].to_s.match(/\d+/)
@@ -56,21 +54,20 @@ class Feeder
         item["tags"].push(row[37])
         stego.processItem(item,vendor)
         index+=1
-        logger.info("#{index} upcs populated") if index % 50000 == 0
+        $logger.info("#{index} upcs populated in #{((Time.now-t0)/60.0).round(2)} minutes (#{index/(Time.now-t0)} upcs processed/sec)") if index % 10000 == 0
       rescue Exception => e
-        #logger.debug(e)
-        logger.error("error in #{e.backtrace[0]}, skipping #{item}")
+        #$logger.debug(e)
+        $logger.error("error in #{e.backtrace[0]}, skipping #{item}")
         next
       end
     end
   end
 
-  def impactParser(infile,outfile,logpath=STDOUT)
+  def impactParser(infile,outfile)
     stego={}
-    logger=Logger.new(logpath)
-    logger.info("extracting gz")
+    $logger.info("extracting gz")
     file=Zlib::GzipReader.open(infile).read
-    logger.info("import to csv array")
+    $logger.info("import to csv array")
     csv=CSV.new(file, headers: true,:col_sep=>"\t")
     while item=csv.shift
       begin
@@ -97,14 +94,14 @@ class Feeder
         stego[item[2]]["image"]=item[6].match(/.+(\/.*(jp(e)?g|png|gif)).*/)[1]
         stego[item[2]]["tags"]=item[24].split(" > ") rescue []
         stego[item[2]]["tags"].push(item[37])
-        logger.info("#{stego.size} upcs populated") if stego.size % 50000 == 0 
+        $logger.info("#{stego.size} upcs populated") if stego.size % 50000 == 0 
       rescue Exception => e
         #logger.debug(e)
-        logger.error("error in #{e.backtrace[0]}, skipping #{item}")
+        $logger.error("error in #{e.backtrace[0]}, skipping #{item}")
         next
       end
     end
-    logger.info("writing to #{outfile}")
+    $logger.info("writing to #{outfile}")
     Zlib::GzipWriter.open(outfile) do |f|
       f.write(stego.to_json)
       f.close

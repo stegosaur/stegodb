@@ -1,0 +1,17 @@
+#!/usr/bin/env ruby
+$LOAD_PATH.unshift(File.expand_path(".")) unless $LOAD_PATH.include?(File.expand_path("."))
+require 'yaml'
+$config=YAML.load_file("./config.yml")
+require 'optparse'
+require 'stegoFeed'
+$logger=Logger.new(STDOUT)
+
+# downstream: digestion of data
+outpath=nil
+OptionParser.new do |opts|
+  opts.on("-o", "--out=value", String) { |value| outpath = value }
+end.parse!
+raise 'usage: pipeline.rb -o <output path>' if outpath.nil? 
+
+stegofeed=Feeder.new
+stegofeed.impactFTP(outpath=outpath)
