@@ -1,4 +1,2 @@
 # stegodb
-# stegodb
-# stegodb
-# stegodb
+created, written, and operated by doron honig
