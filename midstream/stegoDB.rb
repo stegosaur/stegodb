@@ -3,6 +3,7 @@ require 'json'
 require 'yaml'
 require 'sequel'
 require 'logger'
+raise '$config is undefined' if $config.nil?
 
 $db=Sequel.connect("mysql2://#{$config['dbUser']}:#{$config['dbPass']}@#{$config['dbHost']}:3306/#{$config['dbName']}")
 $logger=Logger.new(STDOUT)

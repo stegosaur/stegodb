@@ -31,7 +31,7 @@ class Feeder
   def impactToDB(infile,vendor="walmart")
     $logger.info("processing csv #{infile} for #{vendor}")
     stego=DB.new()
-    gz=Zlib::GzipReader.new(infile)
+    gz=Zlib::GzipReader.new(open(infile))
     index=0
     t0=Time.now
     while output = gz.gets
