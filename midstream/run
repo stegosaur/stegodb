@@ -1,9 +1,9 @@
 #!/usr/bin/env ruby
 $LOAD_PATH.unshift(File.expand_path(File.dirname(__FILE__))) unless $LOAD_PATH.include?(File.expand_path(File.dirname(__FILE__)))
 require 'yaml'
-$config=YAML.load_file("./config.yml")
+$config=YAML.load_file("/stegodb/config.yml")
 require 'optparse'
-require '../downstream/stegoFeed'
+require '/stegodb/downstream/stegoFeed'
 
 # midstream: processing of data
 $logger=Logger.new(STDOUT)
@@ -14,7 +14,7 @@ OptionParser.new do |opts|
   opts.on("-v", "--vendor=value", String) { |value| $options['vendor'] = value }
   opts.on("-f", "--file=value", String) { |value| $options['file'] = value }
 end.parse!
-raise 'usage: pipeline.rb -w <watch path> -v <vendor>' if $options['watch'].nil? or $options['vendor'].nil?
+raise 'usage: midstream/run -w <watch path> -v <vendor> || midstream/run -f <file> -v <vendor>' if ($options['watch'].nil? or $options['file'].nil?) and $options['vendor'].nil?
 
 def process(file)
   t0=Time.now
@@ -33,5 +33,5 @@ if $options['file'].nil?
     }
   end
 else
-  process(file)
+  process($options['file'])
 end

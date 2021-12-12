@@ -1,9 +1,8 @@
 #!/usr/bin/env ruby
-$LOAD_PATH.unshift(File.expand_path(".")) unless $LOAD_PATH.include?(File.expand_path("."))
 require 'yaml'
-$config=YAML.load_file("./config.yml")
+$config=YAML.load_file("/stegodb/config.yml")
 require 'optparse'
-require 'stegoFeed'
+require '/stegodb/downstream/stegoFeed'
 $logger=Logger.new(STDOUT)
 
 # downstream: digestion of data
