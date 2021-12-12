@@ -8,6 +8,7 @@ require 'net/ftp'
 require 'logger'
 require 'zlib'
 require '../midstream/stegoDB'
+raise '$config is undefined' if $config.nil?
 
 class Feeder
   def impactFTP(outpath,ftpHost=$config['ftpHost'],ftpUser=$config['ftpUser'],ftpPass=$config['ftpPass'])
@@ -28,20 +29,20 @@ class Feeder
   end
 
   def impactToDB(infile,vendor="walmart")
-    $logger.info("importing to csv array")
+    $logger.info("processing csv #{infile} for #{vendor}")
     stego=DB.new()
-    csv=CSV.new(Zlib::GzipReader.open(infile).read, headers: true,:col_sep=>"\t")
-    $logger.info("starting DB load")
+    gz=Zlib::GzipReader.new(infile)
     index=0
     t0=Time.now
-    while row=csv.shift
+    while output = gz.gets
       begin
+        row=CSV.new(output, :col_sep=>"\t").shift
         next if !row[2].to_s.match(/\d+/) or !row[1].to_s.match(/\d+/)
         item={}
         item["item"]=row[3]
         item["brand"]=row[15]
         item["upc"]=row[2]
-        item["price"]=row[1] 
+        item["price"]=row[1]
         item["in-stock"]=true if row[34] == "InStock"
         item["in-stock"]=false if row[34] == "OutOfStock"
         item["sku"]=row[0]
@@ -49,7 +50,7 @@ class Feeder
         item["color"]=row[17] unless row[17].nil?
         item["gender"]=row[11] unless row[11].nil?
         item["age-range"]=row[13] unless row[13].nil?
-        item["image"]=row[6].match(/.+(\/.*(jp(e)?g|png|gif)).*/)[1]
+        item["image"]=row[6].match(/.+(\/.*(jp(e)?g|png|gif)).*/)[1] rescue next
         item["tags"]=row[24].split(" > ") rescue []
         item["tags"].push(row[37])
         stego.processItem(item,vendor)
